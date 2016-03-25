@@ -29,6 +29,25 @@ namespace Tests
             Assert.IsNotNull(response.Photo);
         }
 
+        [Test]
+        public void CanGetBadReturnFromHES()
+        {
+            var expectedExpirationDate = new DateTime(2016, 3, 18);
+            string expectedStatus = "RED";
+            string expectedFailureReason = "NCIC Check Issue.";
+
+            var response = PostBarcodeToService("TEMP0001003142");
+
+            Assert.AreEqual("TUESDAY", response.Firstname);
+            Assert.AreEqual("NGUYEN", response.Lastname);
+            Assert.AreEqual(expectedExpirationDate, response.Expirationdate);
+            Assert.AreEqual(expectedStatus, response.Status);
+            Assert.AreEqual(expectedFailureReason, response.Reason);
+
+            Assert.IsNotEmpty(response.Photo, "Denied scans must still include a photo");
+            Assert.IsNull(response.Middlename, "Null fields must be passed as true nulls and not a string representation of the word null");
+            Assert.IsNull(response.Sponsorg, "Null fields must be passed as true nulls and not a string representation of the word null");
+        }
         
         private HESVisitorScanResponse PostBarcodeToService(string barcode)
         {
