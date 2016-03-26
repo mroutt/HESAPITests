@@ -86,6 +86,13 @@ namespace Tests
         }
 
         [Test]
+        public void ShouldGetREDStatusReponseWithInvalidScanDateTime()
+        {
+            var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithInvalidScanDateTime);
+            Assert.IsTrue(response.Status == "RED", "Missing ScanDateTime field  in request should return a status of 'RED'. This could be YELLOW too. Let us know.");
+        }
+
+        [Test]
         public void ShouldGetREDStatusWithMissingStationId()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingStationId);
@@ -138,6 +145,15 @@ namespace Tests
         {
             return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
                 .AddParameter("ScanData", barcode)
+                .AddParameter("StationId", 10012)
+                .AddParameter("IncludePii", "true");
+        }
+
+        private IRestRequest GetHESRequestWithInvalidScanDateTime(string barcode)
+        {
+            return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
+                .AddParameter("ScanData", barcode)
+                .AddParameter("ScanDateTime", "BogusValue")
                 .AddParameter("StationId", 10012)
                 .AddParameter("IncludePii", "true");
         }
