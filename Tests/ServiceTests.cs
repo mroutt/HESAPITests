@@ -4,6 +4,8 @@ using RestSharp;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Net;
 using System.Security.Cryptography;
 
@@ -15,6 +17,7 @@ namespace Tests
 
         private const string GoodBarcode = "TEMP0001003127";
         private const string InternalErrorBarcode = "ERRTEST8675309";
+        private const string BarcodeNotInSystem = "TEMP0001999999";
        
         [Test]
         public void CanGetGoodReturnFromHES()
@@ -33,7 +36,15 @@ namespace Tests
             Assert.IsNotNull(response.Photo);
         }
 
-       
+        [Test]
+        public void CanGetReturnFromHESWhenBarcodeNotInVMS()
+        {
+            var response = PostBarcodeToService(BarcodeNotInSystem, GetValidHESRequest);
+            Assert.AreEqual(response.Status, "RED",
+                "When barcode has a valid format but is not in the system, the status should be 'RED'");
+        }
+
+
         [Test]
         public void CanGetBadReturnFromHES()
         {
@@ -59,7 +70,7 @@ namespace Tests
         public void InternalErrorResponseShouldHaveYELLOWStatus()
         {
             var response = PostBarcodeToService(InternalErrorBarcode, GetValidHESRequest);
-            Assert.IsTrue(response.Status == "YELLOW", "Internal error response should return a status of 'YELLOW'");
+            Assert.AreEqual(response.Status, "YELLOW", "Internal error response should return a status of 'YELLOW'");
             Assert.IsTrue(!String.IsNullOrEmpty(response.ExtendedInfo), "Internal error response should contain ExtendedInfo");
         }
 
@@ -75,35 +86,35 @@ namespace Tests
         public void ShouldGetREDStatusWithInvalidStationId()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithInvalidStationId);
-            Assert.IsTrue(response.Status == "RED", "Invalid StationId should return a status of 'RED'");
+            Assert.AreEqual(response.Status, "RED", "Invalid StationId should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetREDStatusReponseWithMissingScanDateTime()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingScanDateTime);
-            Assert.IsTrue(response.Status == "RED", "Missing ScanDateTime field  in request should return a status of 'RED'");
+            Assert.AreEqual(response.Status, "RED", "Missing ScanDateTime field  in request should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetREDStatusReponseWithInvalidScanDateTime()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithInvalidScanDateTime);
-            Assert.IsTrue(response.Status == "RED", "Missing ScanDateTime field  in request should return a status of 'RED'. This could be YELLOW too. Let us know.");
+            Assert.AreEqual(response.Status, "RED", "Missing ScanDateTime field  in request should return a status of 'RED'. This could be YELLOW too. Let us know.");
         }
 
         [Test]
         public void ShouldGetREDStatusWithMissingStationId()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingStationId);
-            Assert.IsTrue(response.Status == "RED", "Missing StationId should return a status of 'RED'");
+            Assert.AreEqual(response.Status, "RED", "Missing StationId should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetGREENStatusWithMissingIncludePiiAndGoodBarcode()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingIncludePii);
-            Assert.IsTrue(response.Status == "GREEN", "Missing IncludePii should return a status of 'GREEN' with good barcode.");
+            Assert.AreEqual(response.Status, "GREEN", "Missing IncludePii should return a status of 'GREEN' with good barcode.");
         }
         
         private HESVisitorScanResponse PostBarcodeToService(string barcode, 
@@ -177,8 +188,18 @@ namespace Tests
         {
             var response =  GetHESClient().Execute(request);
             if (response.StatusCode == HttpStatusCode.OK)
+            {
+                AssertHESResponseToEnsureResponseMeetsMinimumCriteria(response.Content);
                 return JsonConvert.DeserializeObject<HESVisitorScanResponse>(response.Content);
+            }
             throw new Exception();
+        }
+
+        private void AssertHESResponseToEnsureResponseMeetsMinimumCriteria(string content)
+        {
+            var dict = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(content);
+            Assert.AreEqual(dict.Count, 9, "All HES responses should contain 9 fields.");
+            dict.Values.ToList().ForEach(value => Assert.AreNotEqual(value, "null", " The string 'null' is never a valid value in an HES response field."));
         }
     }
 }
