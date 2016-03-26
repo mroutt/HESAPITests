@@ -14,6 +14,7 @@ namespace Tests
     {
 
         private const string GoodBarcode = "TEMP0001003127";
+        private const string InternalErrorBarcode = "ERRTEST8675309";
        
         [Test]
         public void CanGetGoodReturnFromHES()
@@ -53,6 +54,22 @@ namespace Tests
             Assert.IsNull(response.Middlename, "Null fields must be passed as true nulls and not a string representation of the word null");
             Assert.IsNull(response.Sponsorg, "Null fields must be passed as true nulls and not a string representation of the word null");
         }
+
+        [Test]
+        public void InternalErrorResponseShouldHaveYELLOWStatus()
+        {
+            var response = PostBarcodeToService(InternalErrorBarcode, GetValidHESRequest);
+            Assert.IsTrue(response.Status == "YELLOW", "Internal error response should return a status of 'YELLOW'");
+            Assert.IsTrue(!String.IsNullOrEmpty(response.ExtendedInfo), "Internal error response should contain ExtendedInfo");
+        }
+
+        [Test]
+        public void InternalErrorResponseShouldIncludeExtendedInfo()
+        {
+            var response = PostBarcodeToService(InternalErrorBarcode, GetValidHESRequest);
+            Assert.IsTrue(!String.IsNullOrEmpty(response.ExtendedInfo), "Internal error response should contain ExtendedInfo");
+        }
+
 
         [Test]
         public void ShouldGetREDStatusWithInvalidStationId()
