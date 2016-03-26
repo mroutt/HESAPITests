@@ -9,6 +9,7 @@ using System.Security.Cryptography;
 
 namespace Tests
 {
+    [TestFixture]
     public class ServiceTests
     {
 
@@ -54,17 +55,31 @@ namespace Tests
         }
 
         [Test]
-        public void ShouldGetBadReponseWithInvalidStationId()
+        public void ShouldGetREDStatusWithInvalidStationId()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithInvalidStationId);
-            Assert.IsTrue(response.Status != "GREEN", "Invalid station id should return a status of 'RED'");
+            Assert.IsTrue(response.Status == "RED", "Invalid StationId should return a status of 'RED'");
         }
 
         [Test]
-        public void ShouldGetBadReponseWithMissingStationId()
+        public void ShouldGetREDStatusReponseWithMissingScanDateTime()
+        {
+            var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingScanDateTime);
+            Assert.IsTrue(response.Status == "RED", "Missing ScanDateTime field  in request should return a status of 'RED'");
+        }
+
+        [Test]
+        public void ShouldGetREDStatusWithMissingStationId()
         {
             var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingStationId);
-            Assert.IsTrue(response.Status != "GREEN", "Missing station id should return a status of 'RED'");
+            Assert.IsTrue(response.Status == "RED", "Missing StationId should return a status of 'RED'");
+        }
+
+        [Test]
+        public void ShouldGetGREENStatusWithMissingIncludePiiAndGoodBarcode()
+        {
+            var response = PostBarcodeToService(GoodBarcode, GetHESRequestWithMissingIncludePii);
+            Assert.IsTrue(response.Status == "GREEN", "Missing IncludePii should return a status of 'GREEN' with good barcode.");
         }
         
         private HESVisitorScanResponse PostBarcodeToService(string barcode, 
@@ -79,8 +94,8 @@ namespace Tests
         {
             var request = new RestRequest("api/MAXCheck/CheckVisitor", Method.POST);
             request.AddParameter("ScanData", barcode);
-            request.AddParameter("StationId", "10012");
-            request.AddParameter("ScanDateTime", DateTime.UtcNow.ToString());
+            request.AddParameter("StationId", 10012);
+            request.AddParameter("ScanDateTime", DateTime.UtcNow);
             request.AddParameter("IncludePii", "true");
             return request;
         }
@@ -100,7 +115,24 @@ namespace Tests
                 .AddParameter("ScanData", barcode)
                 .AddParameter("ScanDateTime", DateTime.UtcNow)
                 .AddParameter("IncludePii", "true");
-        } 
+        }
+
+        private IRestRequest GetHESRequestWithMissingScanDateTime(string barcode)
+        {
+            return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
+                .AddParameter("ScanData", barcode)
+                .AddParameter("StationId", 10012)
+                .AddParameter("IncludePii", "true");
+        }
+
+        private IRestRequest GetHESRequestWithMissingIncludePii(string barcode)
+        {
+            return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
+                .AddParameter("ScanData", barcode)
+                .AddParameter("StationId", 10012).
+                AddParameter("IncludePii", "true");
+        }
+
         #endregion
 
         private RestClient GetHESClient()
