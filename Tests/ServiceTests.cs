@@ -98,7 +98,6 @@ namespace Tests
         {
             return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
                 .AddParameter("ScanData", barcode)
-                .AddParameter("StationId", "Bogus")
                 .AddParameter("ScanDateTime", DateTime.UtcNow)
                 .AddParameter("IncludePii", "true");
         } 
