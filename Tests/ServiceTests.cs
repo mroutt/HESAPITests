@@ -2,13 +2,16 @@
 using NUnit.Framework;
 using RestSharp;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Net;
+using System.Security.Cryptography;
 
 namespace Tests
 {
     public class ServiceTests
     {
-
+       
         [Test]
         public void CanGetGoodReturnFromHES()
         {
@@ -26,13 +29,7 @@ namespace Tests
             Assert.IsNotNull(response.Photo);
         }
 
-        [Test]
-        public void ShouldGetInvalidResponseWhenUsingInvalidLocation()
-        {
-            var response = PostBarcodeToService("TEMP0001003127", GetHESRequestWithInvalidLocation);
-            
-        }
-
+       
         [Test]
         public void CanGetBadReturnFromHES()
         {
@@ -57,9 +54,8 @@ namespace Tests
         [Test]
         public void ShouldGetBadReponseWithBadScanLocation()
         {
-            var response = PostBarcodeToService("TEMP0001003142", GetValidHESRequest);
-            Assert.IsTrue(response.Status != "Green");
-            
+            var response = PostBarcodeToService("TEMP0001003127", GetHESRequestWithInvalidLocation);
+            Assert.IsTrue(response.Status != "GREEN", "Invalid station id should return a status of 'RED'");
         }
         
         private HESVisitorScanResponse PostBarcodeToService(string barcode, 
@@ -74,7 +70,7 @@ namespace Tests
         {
             var request = new RestRequest("api/MAXCheck/CheckVisitor", Method.POST);
             request.AddParameter("ScanData", barcode);
-            request.AddParameter("ScanLocation", "10012");
+            request.AddParameter("StationId", "10012");
             request.AddParameter("ScanDateTime", DateTime.UtcNow.ToString());
             request.AddParameter("IncludePii", "true");
             return request;
@@ -84,7 +80,7 @@ namespace Tests
         {
             return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
                 .AddParameter("ScanData", barcode)
-                .AddParameter("ScanLocation", "Bogus")
+                .AddParameter("StationId", "Bogus")
                 .AddParameter("ScanDateTime", DateTime.UtcNow)
                 .AddParameter("IncludePii", "true");
         } 
