@@ -1,3 +1,8 @@
 /Dependencies/NUnit-2.6.4/TestResult.xml
 bin
 obj
+TestResult.xml
+/Tests/*.ncrunchsolution
+/Tests/*.user
+/Tests/*.ncrunchproject
+_NCrunch_Tests
