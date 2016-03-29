@@ -18,6 +18,8 @@ namespace Tests
         private const string GoodBarcode = "TEMP0001003127";
         private const string InternalErrorBarcode = "ERRTEST8675309";
         private const string BarcodeNotInSystem = "TEMP0001999999";
+
+        private const string UnsecureHesUri = "http://app.huntinc.com/";
        
         [Test]
         public void CanGetGoodReturnFromHES()
@@ -181,18 +183,22 @@ namespace Tests
 
         private RestClient GetHESClient()
         {
-            return new RestClient("http://app.huntinc.com/");
+            return new RestClient(UnsecureHesUri);
         }
 
         private HESVisitorScanResponse GetHESResponseFromRequest(IRestRequest request)
         {
-            var response =  GetHESClient().Execute(request);
+            var response = GetHESClient().Execute(request);
             if (response.StatusCode == HttpStatusCode.OK)
             {
                 AssertHESResponseToEnsureResponseMeetsMinimumCriteria(response.Content);
                 return JsonConvert.DeserializeObject<HESVisitorScanResponse>(response.Content);
             }
-            throw new Exception();
+            if (response.ErrorException != null)
+            {
+                throw response.ErrorException;
+            }
+            throw new Exception(string.Format("Response status code {0} returned.", response.ResponseStatus));
         }
 
         private void AssertHESResponseToEnsureResponseMeetsMinimumCriteria(string content)
