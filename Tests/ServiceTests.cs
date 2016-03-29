@@ -198,7 +198,7 @@ namespace Tests
             {
                 throw response.ErrorException;
             }
-            throw new Exception(string.Format("Response status code {0} returned.", response.ResponseStatus));
+            throw new Exception(string.Format("Response status code {0} returned.", response.StatusCode));
         }
 
         private void AssertHESResponseToEnsureResponseMeetsMinimumCriteria(string content)
