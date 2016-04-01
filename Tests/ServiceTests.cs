@@ -198,7 +198,8 @@ namespace Tests
         private void AssertHESResponseToEnsureResponseMeetsMinimumCriteria(string content)
         {
             var dict = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(content);
-            Assert.AreEqual(dict.Count, 9, "All HES responses should contain 9 fields.");
+            Assert.IsTrue(dict.Keys.Contains("Code"), "Code is a required field in the response.");
+            Assert.IsTrue(!dict.Keys.Contains("Reason"), "Reason is no longer a valid field in the response.");
             dict.Values.ToList().ForEach(value => Assert.AreNotEqual(value, "null", " The string 'null' is never a valid value in an HES response field."));
         }
     }
