@@ -28,19 +28,18 @@ namespace Tests
             InternalError = 65536
         }
 
-        private const string ValidBarcode = "TEMP0001003182";
+        private const string ValidBarcode = "STRV0001003276";
         private const string ExpiredBarcode = "TEMP0001003177";
         private const string TurnedInBarcode = "TEMP0001003179";
-        private const string DestroyedBarcode = "TEMP0001003179";
+        private const string DestroyedBarcode = "TEMP0001003180";
         private const string CancelledBarcode = "TEMP0001003181";
-        private const string BadgeNotFoundBarcode = "TEMP0001999999";      
-        private const string InvalidBaseBarcode = "";
-        private const string InvalidGateBarcode = "";
-        private const string FPCONBarcode = "";
-        private const string PersonBarredBarcode = "";
+        private const string BadgeNotFoundBarcode = "TEMP0001999999";
+        private const string InvalidBaseBarcode = "STRV0001003282";
+        private const string InvalidGateBarcode = "STRV0001003277";
+        private const string FPCONBarcode = "TEMP0001003185";
+        private const string PersonBarredBarcode = "STRV0001003283";
+        private const string NCICBarcode = "STRV0001003273";
         private const string InternalErrorBarcode = "ERRTEST8675309";
-
-        private const string LostBarcode = "";
 
         #region Helpers
 
@@ -59,7 +58,7 @@ namespace Tests
         {
             return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
                 .AddParameter("ScanData", barcode)
-                .AddParameter("StationId", "Bogus")
+                .AddParameter("StationId", 0)
                 .AddParameter("ScanDateTime", DateTime.UtcNow)
                 .AddParameter("IncludePii", "true");
         }
@@ -84,7 +83,7 @@ namespace Tests
         {
             return new RestRequest("api/MAXCheck/CheckVisitor", Method.POST)
                 .AddParameter("ScanData", barcode)
-                .AddParameter("ScanDateTime", "BogusValue")
+                .AddParameter("ScanDateTime", DateTime.UtcNow.AddYears(100))
                 .AddParameter("StationId", 10012)
                 .AddParameter("IncludePii", "true");
         }
@@ -132,7 +131,6 @@ namespace Tests
                throw new Exception(string.Format("Exception occurred while processing service call. Inner Exception:{0} Message: {1}", ex, ex.Message), ex); 
                 
             }
-            return null;
         }
 
         private void AssertHESResponseToEnsureResponseMeetsMinimumCriteria(string content)
@@ -140,7 +138,6 @@ namespace Tests
             var dict = JsonConvert.DeserializeObject<Dictionary<string, dynamic>>(content);
             Assert.IsTrue(dict.Keys.Contains("Code"), "Code is a required field in the response.");
             Assert.IsTrue(!dict.Keys.Contains("Reason"), "Reason is no longer a valid field in the response.");
-            dict.Values.ToList().ForEach(value => Assert.AreNotEqual(value, "null", " The string 'null' is never a valid value in an HES response field."));
         }
 
         private void TestThatExpectedResponseValuesArePresent(HESVisitorScanResponse response)
@@ -174,7 +171,7 @@ namespace Tests
         {
             var response = PostBarcodeToService(BadgeNotFoundBarcode, GetValidHESRequest);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.BadgeNotFound), "Barcode {0} should return code BadgeNotFound", BadgeNotFoundBarcode);
-            Assert.AreEqual(response.Status, "RED", "When barcode has a valid format but is not in the system, the status should be 'RED'");
+            Assert.AreEqual("RED", response.Status, "When barcode has a valid format but is not in the system, the status should be 'RED'");
             TestThatExpectedResponseValuesArePresent(response);
         }
 
@@ -183,7 +180,7 @@ namespace Tests
         {
             var response = PostBarcodeToService(ExpiredBarcode, GetValidHESRequest);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.Expired));
-            Assert.AreEqual(response.Status, "RED", "When barcode is expired, the status should be 'RED'");
+            Assert.AreEqual("RED", response.Status, "When barcode is expired, the status should be 'RED'");
             TestThatExpectedResponseValuesArePresent(response);
         }
 
@@ -192,7 +189,7 @@ namespace Tests
         {
             var response = PostBarcodeToService(TurnedInBarcode, GetValidHESRequest);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.TurnedIn));
-            Assert.AreEqual(response.Status, "RED", "When barcode is turned in, the status should be 'RED'");
+            Assert.AreEqual("RED", response.Status, "When barcode is turned in, the status should be 'RED'");
             TestThatExpectedResponseValuesArePresent(response);
         }
 
@@ -201,7 +198,7 @@ namespace Tests
         {
             var response = PostBarcodeToService(CancelledBarcode, GetValidHESRequest);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.Cancelled));
-            Assert.AreEqual(response.Status, "RED", "When barcode is Canceled, the status should be 'RED'");
+            Assert.AreEqual("RED", response.Status, "When barcode is Canceled, the status should be 'RED'");
             TestThatExpectedResponseValuesArePresent(response);
         }
 
@@ -210,18 +207,62 @@ namespace Tests
         {
             var response = PostBarcodeToService(DestroyedBarcode, GetValidHESRequest);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.Destroyed));
-            Assert.AreEqual(response.Status, "RED", "When barcode is destroyed, the status should be 'RED'");
+            Assert.AreEqual("RED", response.Status, "When barcode is destroyed, the status should be 'RED'");
             TestThatExpectedResponseValuesArePresent(response);
         }
 
-        
+        [Test]
+        public void TestInvalidBaseBarcode()
+        {
+            var response = PostBarcodeToService(InvalidBaseBarcode, GetValidHESRequest);
+            Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.InvalidBase));
+            Assert.AreEqual("RED", response.Status, "When barcode is invalid base, the status should be 'RED'");
+            TestThatExpectedResponseValuesArePresent(response);
+        }
+
+        [Test]
+        public void TestInvalidGateBarcode()
+        {
+            var response = PostBarcodeToService(InvalidGateBarcode, GetHESRequestWithInvalidStationId);
+            Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.InvalidGate));
+            Assert.AreEqual("RED", response.Status, "When barcode is invalid gate, the status should be 'RED'");
+            TestThatExpectedResponseValuesArePresent(response);
+        }
+
+        [Test]
+        public void TestFPCONBarcode()
+        {
+            var response = PostBarcodeToService(FPCONBarcode, GetValidHESRequest);
+            Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.FPCON));
+            Assert.AreEqual("RED", response.Status, "When barcode is FPCON, the status should be 'RED'");
+            TestThatExpectedResponseValuesArePresent(response);
+        }
+
+        [Test]
+        public void TestPersonBarredBarcode()
+        {
+            var response = PostBarcodeToService(PersonBarredBarcode, GetValidHESRequest);
+            Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.PersonBarred));
+            Assert.AreEqual("RED", response.Status, "When barcode is person barred, the status should be 'RED'");
+            TestThatExpectedResponseValuesArePresent(response);
+        }
+
+        [Test]
+        public void TestNCICBarcode()
+        {
+            var response = PostBarcodeToService(NCICBarcode, GetValidHESRequest);
+            Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.NCIC));
+            Assert.AreEqual("RED", response.Status, "When barcode is NCIC, the status should be 'RED'");
+            TestThatExpectedResponseValuesArePresent(response);
+        }
+
         [Test]
         public void TestInternalErrorBarcode()
         {
             var response = PostBarcodeToService(InternalErrorBarcode, GetValidHESRequest);
             TestThatExpectedResponseValuesArePresent(response);
             Assert.IsTrue(response.Code.HasFlag(VmsResponseCodes.InternalError));
-            Assert.AreEqual(response.Status, "YELLOW", "Internal error response should return a status of 'YELLOW'");
+            Assert.AreEqual("YELLOW", response.Status, "Internal error response should return a status of 'YELLOW'");
             Assert.IsTrue(!String.IsNullOrEmpty(response.ExtendedInfo), "Internal error response should contain ExtendedInfo");
         }
 
@@ -237,35 +278,35 @@ namespace Tests
         public void ShouldGetREDStatusWithInvalidStationId()
         {
             var response = PostBarcodeToService(ValidBarcode, GetHESRequestWithInvalidStationId);
-            Assert.AreEqual(response.Status, "RED", "Invalid StationId should return a status of 'RED'");
+            Assert.AreEqual("RED", response.Status, "Invalid StationId should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetREDStatusReponseWithMissingScanDateTime()
         {
             var response = PostBarcodeToService(ValidBarcode, GetHESRequestWithMissingScanDateTime);
-            Assert.AreEqual(response.Status, "RED", "Missing ScanDateTime field  in request should return a status of 'RED'");
+            Assert.AreEqual("RED", response.Status, "Missing ScanDateTime field  in request should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetREDStatusReponseWithInvalidScanDateTime()
         {
             var response = PostBarcodeToService(ValidBarcode, GetHESRequestWithInvalidScanDateTime);
-            Assert.AreEqual(response.Status, "RED", "Missing ScanDateTime field  in request should return a status of 'RED'. This could be YELLOW too. Let us know.");
+            Assert.AreEqual("RED", response.Status, "Missing ScanDateTime field  in request should return a status of 'RED'. This could be YELLOW too. Let us know.");
         }
 
         [Test]
         public void ShouldGetREDStatusWithMissingStationId()
         {
             var response = PostBarcodeToService(ValidBarcode, GetHESRequestWithMissingStationId);
-            Assert.AreEqual(response.Status, "RED", "Missing StationId should return a status of 'RED'");
+            Assert.AreEqual("RED", response.Status, "Missing StationId should return a status of 'RED'");
         }
 
         [Test]
         public void ShouldGetGREENStatusWithMissingIncludePiiAndGoodBarcode()
         {
             var response = PostBarcodeToService(ValidBarcode, GetHESRequestWithMissingIncludePii);
-            Assert.AreEqual(response.Status, "GREEN", "Missing IncludePii should return a status of 'GREEN' with good barcode.");
+            Assert.AreEqual("GREEN", response.Status, "Missing IncludePii should return a status of 'GREEN' with good barcode.");
         }
       
     }
